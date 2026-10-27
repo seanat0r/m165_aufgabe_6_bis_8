@@ -126,8 +126,19 @@
     app.put('/user/:id', async (req, res) => {
         try {
             const data = {...req.body};
+            let oldAvatar = null;
 
             if (data.avatar) {
+                const oldUser = await User.findById(req.params.id);
+
+                if (!oldUser) {
+                    return res.status(404).json({
+                        error: 'User not found'
+                    });
+                }
+
+                oldAvatar = oldUser.avatar;
+
                 data.avatar = await saveAvatar(data.avatar);
             }
 
@@ -144,6 +155,10 @@
                 return res.status(404).json({
                     error: 'User not found'
                 });
+            }
+
+            if (oldAvatar) {
+                await deleteAvatar(oldAvatar);
             }
 
             res.status(200).json(user);
