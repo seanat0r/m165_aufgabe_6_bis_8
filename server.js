@@ -6,7 +6,9 @@
     const crypto = require('node:crypto');
  
     const app = express();
-    const PORT = 3000;
+    process.loadEnvFile('.env');
+    const PORT = Number(process.env.PORT) || 3000;
+    const URI = process.env.URI;
 
     // save the avatar in the filesystem
     // save a avatar from base64
@@ -58,7 +60,7 @@
     }
  
     // Verbindung zu MongoDB
-    mongoose.connect('mongodb://adminUser:123@localhost:27017/?authSource=admin');
+    mongoose.connect(URI);
 
     app.use(express.json({limit: '2mb' }));
     app.use(express.static('public'));
