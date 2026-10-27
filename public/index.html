@@ -44,6 +44,12 @@
             white-space: pre-wrap;
             overflow-wrap: anywhere;
         }
+        input[type="color"] {
+        width: 60px;
+        height: 40px;
+        padding: 3px;
+        cursor: pointer;
+    }
 
     #userList li {
         display: flex;
@@ -107,7 +113,8 @@
         <form id="createForm">
             <input name="name" placeholder="Name" required>
             <input name="email" type="email" placeholder="E-Mail" required>
-            <input name="color" type="text" placeholder="blue">
+            <label for="color">Farbe auswählen:</label>
+            <input id="color" name="color" type="color" value="#0000ff">
             <input name="avatar" type="file" accept="image/*">
             <button type="submit">Erstellen</button>
         </form>
@@ -131,9 +138,10 @@
             <input name="id" placeholder="Benutzer-ID">
             <input name="name" placeholder="Name">
             <input name="email" type="email" placeholder="E-Mail">
-            <input name="color" type="text" placeholder="blue">
+            <label for="updateColor">Farbe auswählen:</label>
+            <input id="updateColor" name="color" type="color" value="#0000ff">
             <input name="avatar" type="file" accept="image/*">
-            <button type="submit">Aktualisieren / Upsert</button>
+            <button type="submit">Aktualisieren</button>
         </form>
     </section>
 
