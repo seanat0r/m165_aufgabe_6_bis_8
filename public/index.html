@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Benutzerverwaltung</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 650px;
+            margin: 40px auto;
+            padding: 0 20px;
+            background: #f5f5f5;
+        }
+
+        section {
+            background: white;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+        }
+
+        input, button {
+            padding: 10px;
+            margin: 5px 0;
+            box-sizing: border-box;
+        }
+
+        input {
+            width: 100%;
+        }
+
+        button {
+            cursor: pointer;
+            margin-right: 5px;
+        }
+
+        pre {
+            background: #222;
+            color: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+        }
+
+    #userList li {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px;
+        margin-bottom: 8px;
+        background: #f5f5f5;
+        border-radius: 6px;
+    }
+
+    #userList img {
+        width: 45px;
+        height: 45px;
+        border-radius: 50%;
+        object-fit: cover;
+    }
+
+    #userList span {
+        flex: 1;
+        overflow-wrap: anywhere;
+    }
+
+    #userList button {
+        padding: 6px 10px;
+        margin: 0;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        background: white;
+    }
+
+    #userList button:hover {
+        background: #e5e5e5;
+    }
+    </style>
+    <script>
+        function readImage(file) {
+            return new Promise((resolve, reject) => {
+                if (!file) {
+                    resolve("");
+                    return;
+                }
+
+                const reader = new FileReader();
+
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = () => reject(reader.error);
+
+                reader.readAsDataURL(file);
+            });
+        }
+    </script>
+</head>
+<body>
+
+    <h1>Benutzerverwaltung</h1>
+
+    <section>
+        <h2>Benutzer erstellen (POST)</h2>
+
+        <form id="createForm">
+            <input name="name" placeholder="Name" required>
+            <input name="email" type="email" placeholder="E-Mail" required>
+            <input name="color" type="text" placeholder="blue">
+            <input name="avatar" type="file" accept="image/*">
+            <button type="submit">Erstellen</button>
+        </form>
+    </section>
+
+    <section>
+        <h2>Benutzer lesen (GET)</h2>
+
+        <button onclick="getUsers()">Alle Benutzer anzeigen</button>
+
+        <form id="getForm">
+            <input name="id" placeholder="Benutzer-ID" required>
+            <button type="submit">Benutzer suchen</button>
+        </form>
+    </section>
+
+    <section>
+        <h2>Benutzer aktualisieren (PUT)</h2>
+
+        <form id="updateForm">
+            <input name="id" placeholder="Benutzer-ID">
+            <input name="name" placeholder="Name">
+            <input name="email" type="email" placeholder="E-Mail">
+            <input name="color" type="text" placeholder="blue">
+            <input name="avatar" type="file" accept="image/*">
+            <button type="submit">Aktualisieren / Upsert</button>
+        </form>
+    </section>
+
+    <h2>Serverantwort</h2>
+    <pre id="output">Noch keine Anfrage gesendet.</pre>
+
+    <script>
+        const output = document.getElementById('output');
+
+        async function request(url, method = 'GET', body = null) {
+            try {
+                const options = { method };
+
+                if (body !== null) {
+                    options.headers = {
+                        'Content-Type': 'application/json'
+                    };
+                    options.body = JSON.stringify(body);
+                }
+
+                const response = await fetch(url, options);
+
+                const text = await response.text();
+                let data;
+
+                try {
+                    data = text ? JSON.parse(text) : null;
+                } catch {
+                    data = text;
+                }
+
+                output.textContent = JSON.stringify({
+                    status: response.status,
+                    success: response.ok,
+                    data
+                }, null, 2);
+
+            } catch (error) {
+                output.textContent = `Fehler: ${error.message}`;
+            }
+        }
+
+        // POST: Benutzer erstellen
+        document.getElementById('createForm')
+            .addEventListener('submit', async (event) => {
+                event.preventDefault();
+
+                const form = event.target;
+                const file = form.elements.avatar.files[0];
+
+                const avatar = await readImage(file);
+
+                await request('/user', 'POST', {
+                    name: form.elements.name.value,
+                    email: form.elements.email.value,
+                    color: form.elements.color.value ?? "",
+                    avatar: avatar,
+                });
+                await loadUsers();
+            });
+
+        // GET: Alle Benutzer
+        async function getUsers() {
+            request('/users');
+            await loadUsers();
+        }
+
+        // GET: Einzelner Benutzer
+        document.getElementById('getForm')
+            .addEventListener('submit', async (event) => {
+                event.preventDefault();
+
+                const id = event.target.elements.id.value.trim();
+
+                request(`/user/${encodeURIComponent(id)}`);
+                await loadUsers();
+            });
+
+        // PUT: Benutzer aktualisieren / Upsert
+        document.getElementById('updateForm')
+            .addEventListener('submit', async (event) => {
+                event.preventDefault();
+
+                const form = event.target;
+                const id = form.elements.id.value.trim();
+                const file = form.elements.avatar.files[0];
+
+                const avatar = await readImage(file);
+
+                const data = {};
+
+                if (form.elements.name.value.trim()) {
+                    data.name = form.elements.name.value.trim();
+                }
+
+                if (form.elements.email.value.trim()) {
+                    data.email = form.elements.email.value.trim();
+                }
+
+                if (form.elements.color.value.trim()) {
+                    data.color = form.elements?.color.value.trim();
+                }
+
+                if (avatar) {
+                    data.avatar = avatar;
+                }
+
+                await request(`/user/${encodeURIComponent(id)}`, 'PUT', data);
+                await loadUsers();
+        });
+    </script>
+
+    <section>
+        <h2>Alle Benutzer</h2>
+        <button type="button" onclick="loadUsers()">Aktualisieren</button>
+        <ul id="userList"></ul>
+    </section>
+
+    <script>
+    const userList = document.getElementById('userList');
+    const updateForm = document.getElementById('updateForm');
+
+    // Alle Benutzer laden
+    async function loadUsers() {
+        try {
+            const response = await fetch('/users');
+
+            if (!response.ok) {
+                throw new Error('Benutzer konnten nicht geladen werden');
+            }
+
+            const users = await response.json();
+            userList.innerHTML = '';
+
+            users.forEach(user => {
+                const li = document.createElement('li');
+
+                // avatar
+                const avatar = document.createElement('img');
+                avatar.src = user.avatar || "";
+                avatar.alt = `Avatar von ${user.name}`;
+                avatar.width = 50;
+                avatar.height = 50;
+
+                const name = document.createElement('span');
+                name.textContent = `${user.name} (${user.email}, ${user.color || ""}) `;
+
+                // Update-Button
+                const updateButton = document.createElement('button');
+                updateButton.textContent = 'Update';
+                updateButton.addEventListener('click', () => {
+                    updateForm.elements.id.value = user._id;
+                    updateForm.elements.name.value = user.name;
+                    updateForm.elements.email.value = user.email;
+                    updateForm.elements.color.value = user.color ?? "";
+
+                    updateForm.scrollIntoView({
+                        behavior: 'smooth'
+                    });
+                });
+
+                // Delete-Button
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Delete';
+
+                deleteButton.addEventListener('click', async () => {
+                    if (!confirm(`Benutzer "${user.name}" wirklich löschen?`)) {
+                        return;
+                    }
+
+                    try {
+                        const response = await fetch(`/user/${user._id}`, {
+                            method: 'DELETE'
+                        });
+
+                        if (!response.ok) {
+                            throw new Error('Benutzer konnte nicht gelöscht werden');
+                        }
+
+                        // Liste nach dem Löschen aktualisieren
+                        await loadUsers();
+
+                    } catch (error) {
+                        alert(error.message);
+                    }
+                });
+
+                li.append(avatar, name, updateButton, deleteButton);
+                userList.appendChild(li);
+            });
+
+        } catch (error) {
+            console.error(error);
+        }
+    }
+
+    // Benutzer beim Laden der Seite abrufen
+    loadUsers();
+</script>
+
+</body>
+</html>
